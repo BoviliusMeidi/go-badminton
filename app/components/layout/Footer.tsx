@@ -5,7 +5,7 @@
  */
 
 import { JSX } from "react";
-import { Text } from "./Text";
+import { Text } from "../Text";
 
 /**
  * The main application footer.
