@@ -35,7 +35,7 @@ export default function LangSwitcher(): JSX.Element {
   };
 
   return (
-    <div className="fixed top-4 right-4 font-main text-white z-50">
+    <div className="font-main text-white z-50">
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}
@@ -52,7 +52,7 @@ export default function LangSwitcher(): JSX.Element {
         </button>
 
         {open && (
-          <div className="absolute right-4 mt-2 w-40 rounded-lg shadow-2xl overflow-hidden animate-fadeIn">
+          <div className="absolute right-4 mt-4 w-40 rounded-lg shadow-2xl overflow-hidden animate-fadeIn">
             <button
               onClick={() => handleChange("id")}
               className={`block w-full text-left px-4 py-2 text-sm bg-secondary cursor-pointer ${
