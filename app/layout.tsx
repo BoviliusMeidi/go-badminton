@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Inika } from "next/font/google";
 import { LanguageProvider } from "./LanguageContext";
+import NavBar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 /**
  * Configures and loads the 'Inika' Google Font.
@@ -44,7 +46,11 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={`${inika.variable} antialiased`}>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          <NavBar />
+          {children}
+          <Footer />
+        </LanguageProvider>
       </body>
     </html>
   );
