@@ -39,7 +39,7 @@ export default function LangSwitcher(): JSX.Element {
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}
-          className="flex items-center gap-2 px-3 py-2 transition-all duration-200 cursor-pointer"
+          className="flex items-center gap-2 py-2 transition-all duration-200 cursor-pointer"
           aria-haspopup="true"
           aria-expanded={open}
         >

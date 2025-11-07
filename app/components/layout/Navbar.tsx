@@ -7,8 +7,8 @@
 "use client";
 
 import { JSX } from "react";
-import LanguageSwitcher from "../components/LanguageSwitcher";
-import { Text } from "./Text";
+import LanguageSwitcher from "../LanguageSwitcher";
+import { Text } from "../Text";
 import Link from "next/link";
 
 /**
