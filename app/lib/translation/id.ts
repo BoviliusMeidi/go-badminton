@@ -42,14 +42,18 @@ export const id: object = {
     highlights: {
       title: "Fasilitas Unggulan",
       items: [
-        "6 Lapangan dengan karpet premium",
-        "Kamar mandi dilengkapi shower",
+        "- 6 Lapangan dengan karpet premium",
+        "- Kamar mandi dilengkapi shower",
       ],
     },
     pricing: {
       title: "Tarif per Jam",
       weekday: {
         title: "Senin - Jumat",
+        time: [
+          "(pagi - sore)",
+          "(malam)",
+        ],
         morning: "08.00 s/d 18.00 : Rp 50.000",
         night: [
           "18.00 s/d 21.00 (paket 3 jam) : Rp 180.000",
@@ -60,6 +64,10 @@ export const id: object = {
       },
       weekend: {
         title: "Sabtu - Minggu",
+        time: [
+          "(pagi - sore)",
+          "(malam)",
+        ],
         morning: "08.00 s/d 18.00 : Rp 60.000",
         night: [
           "18.00 s/d 21.00 (paket 3 jam) : Rp 200.000",
@@ -72,8 +80,8 @@ export const id: object = {
     policy: {
       title: "Kebijakan Pemesanan",
       items: [
-        "Online booking harus dibayar dalam waktu 30 menit setelah melakukan booking.",
-        "Untuk mendapatkan rate MEMBER, silakan hubungi Admin via WhatsApp 085712345678.",
+        "- Online booking harus dibayar dalam waktu 30 menit setelah melakukan booking.",
+        "- Untuk mendapatkan rate MEMBER, silakan hubungi Admin via WhatsApp 085712345678.",
       ],
     },
     bookingForm: {
