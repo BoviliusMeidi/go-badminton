@@ -9,8 +9,8 @@
 
 "use client";
 
-import BookingCard from "../components/highlight/BookingCard";
-import LeftSide from "../components/highlight/LeftSide";
+import BookingCard from "../components/booking/BookingCard";
+import LeftSide from "../components/booking/LeftSide";
 
 /**
  * The main layout component for the highlight/booking page.
