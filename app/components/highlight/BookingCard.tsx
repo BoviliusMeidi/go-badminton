@@ -21,6 +21,8 @@ import { getDayType, getPricePerCourt } from "./utils/Counter";
 import { Text } from "../Text";
 
 const timesMorning = [
+  "06:00 - 07:00",
+  "07:00 - 08:00",
   "08.00 - 09.00",
   "09.00 - 10.00",
   "10.00 - 11.00",

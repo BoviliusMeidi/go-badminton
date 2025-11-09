@@ -1,9 +1,16 @@
+/**
+ * @fileoverview
+ * `Schedule` displays the availability of each court by date and time.
+ * It reads bookings from localStorage (written by BookingCard).
+ * Blue slots = booked, yellow/orange slots = available.
+ * Users can select a date to view the current schedule.
+ */
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Text } from "../components/Text"; // kalau pakai i18n, kalau nggak tinggal hapus
+import { Text } from "../components/Text";
 
-// waktu pagi sesuai gambar (06:00 - 18:00)
 const timesMorning = [
   "06:00 - 07:00",
   "07:00 - 08:00",
@@ -19,7 +26,6 @@ const timesMorning = [
   "17:00 - 18:00",
 ];
 
-// malam sesuai gambar
 const timesNight = [
   "18:00 - 21:00",
   "21:00 - 24:00",
@@ -29,26 +35,14 @@ const timesNight = [
 
 const courts = ["1", "2", "3", "4", "5", "6"];
 
-/** Harga tampilan (sesuai gambar): pagi 50.000, malam 180.000 */
-function getPriceForTimeLabel(label) {
-  // gunakan bagian jam awal untuk menilai pagi/malam
-  const start = label.split(" - ")[0];
-  const hour = parseInt(start.split(":")[0], 10);
-  // anggap kalau start >= 18 atau start < 6 -> malam
-  if (hour >= 18 || hour < 6) return "Rp. 180.000";
-  return "Rp. 50.000";
-}
-
-/** helper buat kunci slot yang disimpan di localStorage */
 function slotKeyFromTimeAndCourt(timeLabel, courtId) {
-  // pakai start jam sebagai key singkat, contoh "06:00|1"
   const start = timeLabel.split(" - ")[0];
   return `${start}|${courtId}`;
 }
 
-/** baca booking untuk tanggal tertentu dari localStorage */
+// ✅ FIX: Tambahkan pengecekan typeof window biar aman di Next.js
 function loadBookingsForDate(dateStr) {
-  if (!dateStr) return new Set();
+  if (typeof window === "undefined" || !dateStr) return new Set();
   try {
     const raw = localStorage.getItem("bookings");
     if (!raw) return new Set();
@@ -63,7 +57,6 @@ function loadBookingsForDate(dateStr) {
 
 export default function Schedule() {
   const [date, setDate] = useState(() => {
-    // default: hari ini (format yyyy-mm-dd)
     const d = new Date();
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -71,27 +64,25 @@ export default function Schedule() {
     return `${yyyy}-${mm}-${dd}`;
   });
 
-  const [bookedSlots, setBookedSlots] = useState(() =>
-    loadBookingsForDate(new Date().toISOString().slice(0, 10))
-  );
+  const [bookedSlots, setBookedSlots] = useState(new Set());
 
-  // reload bookings setiap kali tanggal berubah (non-interaktif view)
+  // ✅ Load hanya di client
   useEffect(() => {
     setBookedSlots(loadBookingsForDate(date));
   }, [date]);
 
-  // juga watch localStorage perubahan dari tab lain (jika BookingCard di tab lain menulis)
   useEffect(() => {
     function onStorage(e) {
       if (e.key === "bookings") {
         setBookedSlots(loadBookingsForDate(date));
       }
     }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", onStorage);
+      return () => window.removeEventListener("storage", onStorage);
+    }
   }, [date]);
 
-  // convenience: buat array rows dengan label & times
   const morningRows = useMemo(
     () => timesMorning.map((t) => ({ label: t, rows: courts })),
     []
@@ -101,25 +92,29 @@ export default function Schedule() {
     []
   );
 
+  const isWeekend = useMemo(() => {
+    const day = new Date(date).getDay();
+    return day === 0 || day === 6;
+  }, [date]);
+
+  const morningPrice = isWeekend ? "Rp. 60.000" : "Rp. 50.000";
+  const nightPrice = isWeekend ? "Rp. 200.000" : "Rp. 180.000";
+
   return (
     <section className="w-full flex flex-col gap-8 px-6 sm:px-24 py-8 font-main">
       <div>
         <h1 className="text-4xl font-bold mb-2">
-          <Text path="schedule.title">Jadwal Lapangan</Text>
+          <Text path="schedule.title" />
         </h1>
         <p className="text-lg text-gray-700">
-          <Text path="schedule.description">
-            Pilih tanggal untuk melihat ketersediaan (kuning = tersedia, biru =
-            sudah dibooking)
-          </Text>
+          <Text path="schedule.description" />
         </p>
       </div>
 
       <div className="bg-main p-6 rounded-2xl shadow-md border border-gray-300">
-        {/* Tanggal */}
-        <div className="mb-6 flex items-center gap-4">
-          <label className="font-semibold min-w-[120px]">
-            <Text path="courtInfo.bookingForm.dateLabel">Pilih Tanggal</Text>
+        <div className="ml-1 mb-6 flex items-center gap-15">
+          <label className="font-semibold">
+            <Text path="courtInfo.bookingForm.dateLabel" />
           </label>
           <input
             type="date"
@@ -129,62 +124,54 @@ export default function Schedule() {
           />
         </div>
 
-        {/* Header tabel: kolom Jam + Lap 1..6 */}
         <div className="overflow-x-auto">
           <div className="min-w-[780px]">
+            {/* Header */}
             <div className="grid grid-cols-[160px_repeat(6,1fr)] gap-3 items-center mb-3">
               <div className="px-3 py-2 rounded-md bg-white border border-gray-300 text-center font-semibold">
-                Jam
+                <Text path="schedule.time" />
               </div>
               {courts.map((c) => (
                 <div
                   key={c}
                   className="px-3 py-2 rounded-md bg-white border border-gray-300 text-center font-semibold"
                 >
-                  Lap {c}
+                  <Text path="courtInfo.bookingForm.fieldCourt" /> {c}
                 </div>
               ))}
             </div>
 
-            {/* Pagi label */}
-            <div className="mb-2">
-              <div className="px-3 py-1 rounded-full bg-white border border-gray-300 w-32 text-center font-medium">
-                Pagi
+            {/* Morning section */}
+            <div className="mb-2 mt-7">
+              <div className="px-5 py-1 rounded-full bg-white border border-gray-300 w-full text-center font-medium">
+                <Text path="courtInfo.pricing.weekday.time.0" />
               </div>
             </div>
 
-            {/* Baris pagi */}
             <div className="flex flex-col gap-3">
               {morningRows.map((row) => (
                 <div
                   key={row.label}
                   className="grid grid-cols-[160px_repeat(6,1fr)] gap-3 items-center"
                 >
-                  {/* Jam */}
                   <div className="px-3 py-2 rounded-md bg-white border border-gray-300 text-sm">
                     {row.label}
                   </div>
 
-                  {/* slots */}
                   {courts.map((c) => {
                     const key = slotKeyFromTimeAndCourt(row.label, c);
                     const isBooked = bookedSlots.has(key);
                     return (
                       <div
                         key={c}
-                        className={`px-3 py-2 rounded-md border ${
+                        className={`px-3 py-2 rounded-md border flex items-center justify-center text-sm font-medium shadow-sm ${
                           isBooked
                             ? "bg-blue-600 text-white border-blue-700"
                             : "bg-yellow-200 text-gray-800 border-yellow-300"
-                        } flex items-center justify-center text-sm font-medium shadow-sm`}
-                        // non-interactive view: pointer-events none so user can't click
+                        }`}
                         style={{ pointerEvents: "none" }}
                       >
-                        <div className="flex flex-col items-center">
-                          <span className="text-sm">
-                            {isBooked ? "Rp. 50.000" : "Rp. 50.000"}
-                          </span>
-                        </div>
+                        {morningPrice}
                       </div>
                     );
                   })}
@@ -192,61 +179,42 @@ export default function Schedule() {
               ))}
             </div>
 
-            {/* Ruang antar */}
-            <div className="my-4">
-              <div className="px-3 py-1 rounded-full bg-white border border-gray-300 w-28 text-center font-medium">
-                Malam
+            {/* Night section */}
+            <div className="mb-2 mt-10">
+              <div className="px-3 py-1 rounded-full bg-white border border-gray-300 w-full text-center font-medium">
+                <Text path="courtInfo.pricing.weekday.time.1" />
               </div>
             </div>
 
-            {/* Baris malam */}
             <div className="flex flex-col gap-3">
               {nightRows.map((row) => (
                 <div
                   key={row.label}
                   className="grid grid-cols-[160px_repeat(6,1fr)] gap-3 items-center"
                 >
-                  {/* Jam */}
                   <div className="px-3 py-2 rounded-md bg-white border border-gray-300 text-sm">
                     {row.label}
                   </div>
 
-                  {/* slots */}
                   {courts.map((c) => {
                     const key = slotKeyFromTimeAndCourt(row.label, c);
                     const isBooked = bookedSlots.has(key);
                     return (
                       <div
                         key={c}
-                        className={`px-3 py-2 rounded-md border ${
+                        className={`px-3 py-2 rounded-md border flex items-center justify-center text-sm font-medium shadow-sm ${
                           isBooked
-                            ? "bg-blue-600 text-white border-blue-700"
-                            : "bg-yellow-200 text-gray-800 border-yellow-300"
-                        } flex items-center justify-center text-sm font-medium shadow-sm`}
+                            ? "bg-blue-800 text-white border-blue-900"
+                            : "bg-orange-200 text-gray-800 border-orange-300"
+                        }`}
                         style={{ pointerEvents: "none" }}
                       >
-                        <div className="flex flex-col items-center">
-                          <span className="text-sm">
-                            {isBooked ? "Rp. 180.000" : "Rp. 180.000"}
-                          </span>
-                        </div>
+                        {nightPrice}
                       </div>
                     );
                   })}
                 </div>
               ))}
-            </div>
-
-            {/* Legend */}
-            <div className="mt-6 flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-yellow-200 border border-yellow-300" />
-                <span className="text-sm">Tersedia</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-blue-600 border border-blue-700" />
-                <span className="text-sm">Sudah dibooking</span>
-              </div>
             </div>
           </div>
         </div>

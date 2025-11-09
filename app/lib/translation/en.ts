@@ -127,5 +127,6 @@ export const en: object = {
   schedule: {
     title: "Check Schedule",
     description: "Check availability for your selected date and time.",
+    time: "Time",
   },
 };

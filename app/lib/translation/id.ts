@@ -8,6 +8,8 @@
  * @type {object}
  */
 
+import { time } from "console";
+
 export const id: object = {
   title: "Go! Badminton",
   description:
@@ -125,7 +127,7 @@ export const id: object = {
 
   schedule: {
     title: "Cek Jadwal",
-    description:
-      "Periksa ketersediaan untuk tanggal dan waktu yang Anda pilih.",
+    description: "Periksa ketersediaan untuk tanggal dan waktu yang Anda pilih.",
+    time: "Waktu",
   },
 };
