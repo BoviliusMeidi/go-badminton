@@ -43,8 +43,8 @@ export const en: object = {
     highlights: {
       title: "Highlights",
       items: [
-        "6 courts with premium carpet",
-        "Bathrooms equipped with showers",
+        "- 6 courts with premium carpet",
+        "- Bathrooms equipped with showers",
       ],
     },
     pricing: {
@@ -52,6 +52,10 @@ export const en: object = {
       weekday: {
         title: "Monday - Friday",
         morning: "08:00 to 18:00 : Rp 50,000",
+        time: [
+          "(morning - afternoon)",
+          "(night)",
+        ],
         night: [
           "18:00 to 21:00 (3-hour package) : Rp 180,000",
           "21:00 to 24:00 (3-hour package) : Rp 180,000",
@@ -62,6 +66,10 @@ export const en: object = {
       weekend: {
         title: "Saturday - Sunday",
         morning: "08:00 to 18:00 : Rp 60,000",
+        time: [
+          "(morning - afternoon)",
+          "(night)",
+        ],
         night: [
           "18:00 to 21:00 (3-hour package) : Rp 200,000",
           "21:00 to 24:00 (3-hour package) : Rp 200,000",
@@ -73,8 +81,8 @@ export const en: object = {
     policy: {
       title: "Booking Policy",
       items: [
-        "Online bookings must be paid within 30 minutes after placing the booking.",
-        "To get MEMBER rates, please contact the Admin via WhatsApp at 085712345678.",
+        "- Online bookings must be paid within 30 minutes after placing the booking.",
+        "- To get MEMBER rates, please contact the Admin via WhatsApp at 085712345678.",
       ],
     },
     bookingForm: {
