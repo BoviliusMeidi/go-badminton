@@ -7,7 +7,7 @@
 
 "use client";
 
-import { Text } from "../../../components/Text";
+import { Text } from "../../Text";
 
 export default function CourtSelector({
   courts,

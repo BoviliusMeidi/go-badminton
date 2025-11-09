@@ -1,170 +1,65 @@
 /**
  * @fileoverview
- * This file defines the `BookingCard` component, which provides an interactive
- * form for selecting a date, time slots, and courts for badminton bookings.
- * It handles booking storage, expiration cleanup, and cross-tab synchronization
- * using `localStorage`.
+ * The `BookingCard` component is the main interface for court booking.
+ * It allows users to:
+ * - Select a booking date
+ * - Choose the number of courts
+ * - Pick available time slots (morning/night)
+ * - Select specific courts
+ * - View and confirm total price
+ *
+ * This component integrates several helper utilities and hooks:
+ * - `useBookings` → to sync booked slots with localStorage
+ * - `getDayType` and `getPricePerCourt` → to handle price logic
+ * - `CourtSelector` and `TimeSelector` → for UI interaction
+ * - `bookingStorage` utilities → for persistent storage
+ *
+ * It automatically prevents double-booking and removes expired bookings.
  */
 
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { Text } from "../Text";
 import TimeSelector from "./utils/TimeSelector";
 import CourtSelector from "./utils/CourtSelector";
 import { getDayType, getPricePerCourt } from "./utils/Counter";
-import { Text } from "../Text";
+import { useBookings } from "./hooks/useBookings";
+import {
+  loadBookingsRaw,
+  saveBookingsRaw,
+  loadBookedSetForDate,
+} from "./bookingStorage";
+import { startTimeFromLabel } from "./bookingHelpers";
+import { timesMorning, timesNight, courts } from "./constants";
 
 /**
- * Morning time slot labels.
- * @type {string[]}
- */
-const timesMorning = [
-  "06:00 - 07:00",
-  "07:00 - 08:00",
-  "08.00 - 09.00",
-  "09.00 - 10.00",
-  "10.00 - 11.00",
-  "11.00 - 12.00",
-  "12.00 - 13.00",
-  "13.00 - 14.00",
-  "14.00 - 15.00",
-  "15.00 - 16.00",
-  "16.00 - 17.00",
-  "17.00 - 18.00",
-];
-
-/**
- * Night time slot labels.
- * @type {string[]}
- */
-const timesNight = [
-  "18.00 - 21.00",
-  "21.00 - 24.00",
-  "24.00 - 03.00",
-  "03.00 - 06.00",
-];
-
-/**
- * Available court numbers.
- * @type {string[]}
- */
-const courts = ["1", "2", "3", "4", "5", "6"];
-
-/**
- * Extracts and normalizes the start time from a time label.
- * @param {string} label - The time label (e.g. "06:00 - 07:00")
- * @returns {string} Normalized start time in HH:mm format.
- */
-function startTimeFromLabel(label) {
-  const start = label.split(" - ")[0].trim();
-  const hourMin = start.replace(".", ":");
-  if (hourMin.startsWith("24:")) return hourMin.replace("24:", "00:");
-  if (hourMin === "24:00") return "00:00";
-  return hourMin;
-}
-
-/**
- * Loads all booking data from localStorage.
- * @returns {Record<string, Array<{ key: string, timestamp: number }>>}
- */
-function loadBookingsRaw() {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem("bookings");
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    console.error("loadBookingsRaw error", e);
-    return {};
-  }
-}
-
-/**
- * Saves booking data to localStorage.
- * @param {object} obj - The booking data object to save.
- */
-function saveBookingsRaw(obj) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem("bookings", JSON.stringify(obj));
-  } catch (e) {
-    console.error("saveBookingsRaw error", e);
-  }
-}
-
-/**
- * Returns a Set of booked slot keys for a specific date.
- * @param {string} dateStr - The target date string (YYYY-MM-DD).
- * @returns {Set<string>} A set of booked slot keys for that date.
- */
-function loadBookedSetForDate(dateStr) {
-  if (typeof window === "undefined" || !dateStr) return new Set();
-  const raw = loadBookingsRaw();
-  const arr = raw[dateStr] || [];
-  return new Set(arr.map((b) => b.key));
-}
-
-/**
- * Removes expired bookings older than 2 hours from localStorage.
- */
-function cleanupExpiredBookings() {
-  const now = Date.now();
-  const data = loadBookingsRaw();
-  let changed = false;
-
-  for (const dateKey in data) {
-    const bookings = data[dateKey];
-    const filtered = bookings.filter(
-      (b) => now - (b.timestamp || 0) < 2 * 60 * 60 * 1000
-    );
-    if (filtered.length !== bookings.length) {
-      data[dateKey] = filtered;
-      changed = true;
-    }
-  }
-
-  if (changed) saveBookingsRaw(data);
-}
-
-/**
- * Main booking form component.
- * Allows users to select a date, choose time slots and courts,
- * view total cost, and save temporary bookings to localStorage.
+ * The main booking form component used on the court reservation page.
  *
- * @returns {JSX.Element} The rendered booking form section.
+ * It combines date, time, and court selection with automatic price calculation.
+ * Data is synchronized in real-time through `localStorage`, ensuring that
+ * booked slots are locked globally (even across browser tabs).
+ *
+ * @returns {JSX.Element} The complete booking card UI with selection controls and summary.
  */
 export default function BookingCard() {
   const [date, setDate] = useState("");
   const [courtCount, setCourtCount] = useState(1);
   const [selectedTimes, setSelectedTimes] = useState([]);
   const [selectedCourts, setSelectedCourts] = useState([]);
-  const [bookedSet, setBookedSet] = useState(new Set());
+  const { bookedSet, setBookedSet } = useBookings(date);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && date) {
-      cleanupExpiredBookings();
-      setBookedSet(loadBookedSetForDate(date));
-    }
-  }, [date]);
+  /** Handles toggling a selected time slot. */
+  const toggleTime = useCallback(
+    (time) => {
+      setSelectedTimes((prev) =>
+        prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time]
+      );
+    },
+    []
+  );
 
-  useEffect(() => {
-    function onStorage(e) {
-      if (e.key === "bookings") {
-        cleanupExpiredBookings();
-        setBookedSet(loadBookedSetForDate(date));
-      }
-    }
-    if (typeof window !== "undefined") {
-      window.addEventListener("storage", onStorage);
-      return () => window.removeEventListener("storage", onStorage);
-    }
-  }, [date]);
-
-  const toggleTime = useCallback((time) => {
-    setSelectedTimes((prev) =>
-      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time]
-    );
-  }, []);
-
+  /** Checks if a given time/court pair is already booked. */
   const isSlotBooked = useCallback(
     (timeLabel, courtId) => {
       const start = startTimeFromLabel(timeLabel);
@@ -174,6 +69,7 @@ export default function BookingCard() {
     [bookedSet]
   );
 
+  /** Toggles court selection, respecting the court count limit and booked status. */
   const toggleCourt = useCallback(
     (courtId) => {
       setSelectedCourts((prev) => {
@@ -183,7 +79,7 @@ export default function BookingCard() {
         for (const t of selectedTimes) {
           if (isSlotBooked(t, courtId)) {
             alert(
-              `Lapangan ${courtId} pada ${t} sudah dibooking untuk tanggal ${date}. Pilih lapangan lain.`
+              `Lapangan ${courtId} pada ${t} sudah dibooking untuk tanggal ${date}.`
             );
             return prev;
           }
@@ -194,8 +90,10 @@ export default function BookingCard() {
     [courtCount, selectedTimes, date, isSlotBooked]
   );
 
+  /** Determines whether the selected date is weekday or weekend. */
   const dayType = useMemo(() => getDayType(date), [date]);
 
+  /** Calculates total booking cost based on time, court count, and day type. */
   const total = useMemo(() => {
     return selectedTimes.reduce((sum, time) => {
       const perCourt = getPricePerCourt(dayType, time);
@@ -203,6 +101,7 @@ export default function BookingCard() {
     }, 0);
   }, [selectedTimes, selectedCourts, dayType]);
 
+  /** Validates and saves booking data to localStorage. */
   const handleSubmit = useCallback(() => {
     if (!date) return alert("Pilih tanggal terlebih dahulu.");
     if (selectedTimes.length === 0 || selectedCourts.length === 0)
@@ -236,7 +135,7 @@ export default function BookingCard() {
     setBookedSet(loadBookedSetForDate(date));
     setSelectedTimes([]);
     setSelectedCourts([]);
-    alert("Booking berhasil disimpan (auto hapus dalam 5 menit).");
+    alert("Booking berhasil disimpan!");
   }, [date, selectedTimes, selectedCourts]);
 
   return (
