@@ -1,15 +1,32 @@
 /**
  * @fileoverview
- * `Schedule` displays the availability of each court by date and time.
- * It reads bookings from localStorage (written by BookingCard).
- * Blue slots = booked, yellow/orange slots = available.
- * Users can select a date to view the current schedule.
+ * The `Schedule` component displays the availability of badminton courts
+ * for each time slot and date. It visually shows which slots are booked
+ * (blue) and which remain available (yellow/orange).
+ *
+ * It reads booking data from `localStorage`, which is written by the
+ * `BookingCard` component, and automatically cleans expired bookings
+ * that are older than 1 hour.
  */
 
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { Text } from "../components/Text";
+
+/**
+ * A React component that renders a court schedule table with time slots,
+ * showing which courts are booked or available.
+ *
+ * Features:
+ * - Date selector to view bookings for different days.
+ * - Booked slots highlighted in blue; available slots in yellow/orange.
+ * - Automatic refresh every 10 seconds and `storage` event sync.
+ * - Expired bookings (older than 1 hour) are removed from `localStorage`.
+ * - Responsive design with horizontal scrolling for smaller screens.
+ *
+ * @returns {JSX.Element} A `<section>` element containing the full court schedule.
+ */
 
 const timesMorning = [
   "06:00 - 07:00",
@@ -36,21 +53,33 @@ const timesNight = [
 const courts = ["1", "2", "3", "4", "5", "6"];
 
 function slotKeyFromTimeAndCourt(timeLabel, courtId) {
-  const start = timeLabel.split(" - ")[0];
+  const start = timeLabel.split(" - ")[0].trim();
   return `${start}|${courtId}`;
 }
 
-// ✅ FIX: Tambahkan pengecekan typeof window biar aman di Next.js
 function loadBookingsForDate(dateStr) {
   if (typeof window === "undefined" || !dateStr) return new Set();
+
   try {
     const raw = localStorage.getItem("bookings");
     if (!raw) return new Set();
+
     const parsed = JSON.parse(raw);
     const arr = parsed[dateStr] || [];
-    return new Set(arr);
+    const now = Date.now();
+
+    const valid = arr.filter(
+      (item) => now - (item.timestamp || 0) < 60 * 60 * 1000
+    );
+
+    if (valid.length !== arr.length) {
+      parsed[dateStr] = valid;
+      localStorage.setItem("bookings", JSON.stringify(parsed));
+    }
+
+    return new Set(valid.map((item) => item.key));
   } catch (e) {
-    console.error("failed to load bookings", e);
+    console.error("Failed to load bookings:", e);
     return new Set();
   }
 }
@@ -66,7 +95,6 @@ export default function Schedule() {
 
   const [bookedSlots, setBookedSlots] = useState(new Set());
 
-  // ✅ Load hanya di client
   useEffect(() => {
     setBookedSlots(loadBookingsForDate(date));
   }, [date]);
@@ -77,9 +105,16 @@ export default function Schedule() {
         setBookedSlots(loadBookingsForDate(date));
       }
     }
+
     if (typeof window !== "undefined") {
       window.addEventListener("storage", onStorage);
-      return () => window.removeEventListener("storage", onStorage);
+      const interval = setInterval(() => {
+        setBookedSlots(loadBookingsForDate(date));
+      }, 10000);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("storage", onStorage);
+      };
     }
   }, [date]);
 
@@ -102,6 +137,7 @@ export default function Schedule() {
 
   return (
     <section className="w-full flex flex-col gap-8 px-6 sm:px-24 py-8 font-main">
+      {/* Title + description */}
       <div>
         <h1 className="text-4xl font-bold mb-2">
           <Text path="schedule.title" />
@@ -111,8 +147,9 @@ export default function Schedule() {
         </p>
       </div>
 
+      {/* Date selector + schedule table */}
       <div className="bg-main p-6 rounded-2xl shadow-md border border-gray-300">
-        <div className="ml-1 mb-6 flex items-center gap-15">
+        <div className="ml-1 mb-6 flex items-center gap-6">
           <label className="font-semibold">
             <Text path="courtInfo.bookingForm.dateLabel" />
           </label>
@@ -157,19 +194,17 @@ export default function Schedule() {
                   <div className="px-3 py-2 rounded-md bg-white border border-gray-300 text-sm">
                     {row.label}
                   </div>
-
                   {courts.map((c) => {
                     const key = slotKeyFromTimeAndCourt(row.label, c);
                     const isBooked = bookedSlots.has(key);
                     return (
                       <div
                         key={c}
-                        className={`px-3 py-2 rounded-md border flex items-center justify-center text-sm font-medium shadow-sm ${
+                        className={`px-3 py-2 rounded-md border flex items-center justify-center text-sm font-medium shadow-sm transition-colors ${
                           isBooked
-                            ? "bg-blue-600 text-white border-blue-700"
+                            ? "bg-orange-200 text-gray-600 cursor-not-allowed"
                             : "bg-yellow-200 text-gray-800 border-yellow-300"
                         }`}
-                        style={{ pointerEvents: "none" }}
                       >
                         {morningPrice}
                       </div>
@@ -195,19 +230,17 @@ export default function Schedule() {
                   <div className="px-3 py-2 rounded-md bg-white border border-gray-300 text-sm">
                     {row.label}
                   </div>
-
                   {courts.map((c) => {
                     const key = slotKeyFromTimeAndCourt(row.label, c);
                     const isBooked = bookedSlots.has(key);
                     return (
                       <div
                         key={c}
-                        className={`px-3 py-2 rounded-md border flex items-center justify-center text-sm font-medium shadow-sm ${
+                        className={`px-3 py-2 rounded-md border flex items-center justify-center text-sm font-medium shadow-sm transition-colors ${
                           isBooked
-                            ? "bg-blue-800 text-white border-blue-900"
-                            : "bg-orange-200 text-gray-800 border-orange-300"
+                            ? "bg-orange-200 text-gray-600 cursor-not-allowed"
+                            : "bg-yellow-200 text-gray-800 border-yellow-300"
                         }`}
-                        style={{ pointerEvents: "none" }}
                       >
                         {nightPrice}
                       </div>
