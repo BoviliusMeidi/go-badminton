@@ -26,7 +26,7 @@ import LeftSide from "../components/booking/LeftSide";
  */
 export default function Highlight() {
   return (
-    <div className="flex flex-col lg:flex-row">
+    <div id="booking" className="flex flex-col lg:flex-row">
       <LeftSide />
       <BookingCard />
     </div>

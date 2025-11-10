@@ -36,12 +36,12 @@ export default function NavBar(): JSX.Element {
             </Link>
           </li>
           <li>
-            <Link href="/about">
+            <Link href="#about">
               <Text path="navbar.about" />
             </Link>
           </li>
           <li>
-            <Link href="/booking">
+            <Link href="#booking">
               <Text path="navbar.booking" />
             </Link>
           </li>

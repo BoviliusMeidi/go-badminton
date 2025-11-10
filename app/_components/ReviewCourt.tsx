@@ -48,7 +48,7 @@ export default function ReviewCourt(): JSX.Element {
     useDragScroll(scrollRef);
 
   return (
-    <section className="w-full flex flex-col gap-12 px-6 sm:px-24 py-24 h-screen font-main">
+    <section id="about" className="w-full flex flex-col gap-12 px-6 sm:px-24 py-24 h-screen font-main">
       <div>
         <h1 className="text-4xl font-bold">
           <Text path="review.title" />
