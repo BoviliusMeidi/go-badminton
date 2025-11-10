@@ -1,34 +1,97 @@
 /**
  * @fileoverview
  * The `Schedule` component displays the availability of badminton courts
- * for each time slot and date. It visually shows which slots are booked
- * (blue) and which remain available (yellow/orange).
+ * for each time slot and date. It visually indicates which slots are booked
+ * (orange) and which remain available (yellow).
  *
- * It reads booking data from `localStorage`, which is written by the
- * `BookingCard` component, and automatically cleans expired bookings
- * that are older than 1 hour.
+ * It reads booking data from `localStorage` — written by the `BookingCard`
+ * component — and automatically removes expired bookings (older than 1 hour).
+ *
  */
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Text } from "../components/Text";
 
 /**
- * A React component that renders a court schedule table with time slots,
- * showing which courts are booked or available.
- *
- * Features:
- * - Date selector to view bookings for different days.
- * - Booked slots highlighted in blue; available slots in yellow/orange.
- * - Automatic refresh every 10 seconds and `storage` event sync.
- * - Expired bookings (older than 1 hour) are removed from `localStorage`.
- * - Responsive design with horizontal scrolling for smaller screens.
- *
- * @returns {JSX.Element} A `<section>` element containing the full court schedule.
+ * Represents a time label for a court schedule (e.g. `"08:00 - 09:00"`).
+ * @typedef {string} TimeLabel
  */
 
-const timesMorning = [
+/**
+ * Represents a unique court identifier (e.g. `"1"`, `"2"`).
+ * @typedef {string} CourtId
+ */
+
+/**
+ * Represents a booking key, combining start time and court ID
+ * (e.g. `"08:00|2"`).
+ * @typedef {string} BookingKey
+ */
+
+/**
+ * Represents a single booking entry stored in `localStorage`.
+ */
+interface BookingItem {
+  key: string;
+  timestamp?: number;
+}
+
+/**
+ * A helper that generates a consistent booking key from a time label and court ID.
+ *
+ * @example
+ * slotKeyFromTimeAndCourt("08:00 - 09:00", "2") // "08:00|2"
+ *
+ * @param {TimeLabel} timeLabel - A time range label.
+ * @param {CourtId} courtId - The court identifier.
+ * @returns {BookingKey} A unique booking key string.
+ */
+function slotKeyFromTimeAndCourt(timeLabel: string, courtId: string): string {
+  const start = timeLabel.split(" - ")[0].trim();
+  return `${start}|${courtId}`;
+}
+
+/**
+ * Loads valid bookings from localStorage for a specific date.
+ * Expired bookings (older than 1 hour) are automatically removed.
+ *
+ * @param {string} dateStr - The selected date in `YYYY-MM-DD` format.
+ * @returns {Set<BookingKey>} A Set of active booking keys.
+ */
+function loadBookingsForDate(dateStr: string): Set<string> {
+  if (typeof window === "undefined" || !dateStr) return new Set();
+
+  try {
+    const raw = localStorage.getItem("bookings");
+    if (!raw) return new Set();
+
+    const parsed: Record<string, BookingItem[]> = JSON.parse(raw);
+    const arr = parsed[dateStr] || [];
+    const now = Date.now();
+
+    // Filter out expired bookings (older than 1 hour)
+    const valid = arr.filter((item) => now - (item.timestamp || 0) < 60 * 60 * 1000);
+
+    // Update storage if there were expired items
+    if (valid.length !== arr.length) {
+      parsed[dateStr] = valid;
+      localStorage.setItem("bookings", JSON.stringify(parsed));
+    }
+
+    // Return all valid booking keys
+    return new Set(valid.map((item) => item.key));
+  } catch (e) {
+    console.error("Failed to load bookings:", e);
+    return new Set();
+  }
+}
+
+// Constants for court IDs and time slots
+const courts: string[] = ["1", "2", "3", "4", "5", "6"];
+
+const timesMorning: string[] = [
   "06:00 - 07:00",
   "07:00 - 08:00",
   "08:00 - 09:00",
@@ -43,49 +106,28 @@ const timesMorning = [
   "17:00 - 18:00",
 ];
 
-const timesNight = [
+const timesNight: string[] = [
   "18:00 - 21:00",
   "21:00 - 24:00",
   "24:00 - 03:00",
   "03:00 - 06:00",
 ];
 
-const courts = ["1", "2", "3", "4", "5", "6"];
-
-function slotKeyFromTimeAndCourt(timeLabel, courtId) {
-  const start = timeLabel.split(" - ")[0].trim();
-  return `${start}|${courtId}`;
-}
-
-function loadBookingsForDate(dateStr) {
-  if (typeof window === "undefined" || !dateStr) return new Set();
-
-  try {
-    const raw = localStorage.getItem("bookings");
-    if (!raw) return new Set();
-
-    const parsed = JSON.parse(raw);
-    const arr = parsed[dateStr] || [];
-    const now = Date.now();
-
-    const valid = arr.filter(
-      (item) => now - (item.timestamp || 0) < 60 * 60 * 1000
-    );
-
-    if (valid.length !== arr.length) {
-      parsed[dateStr] = valid;
-      localStorage.setItem("bookings", JSON.stringify(parsed));
-    }
-
-    return new Set(valid.map((item) => item.key));
-  } catch (e) {
-    console.error("Failed to load bookings:", e);
-    return new Set();
-  }
-}
-
-export default function Schedule() {
-  const [date, setDate] = useState(() => {
+/**
+ * The main `Schedule` component that displays badminton court availability.
+ *
+ * It shows:
+ * - Morning and night sessions.
+ * - Booked slots (orange, not clickable).
+ * - Available slots (yellow).
+ * - Dynamic date selection.
+ * - Automatic refresh every 10 seconds and sync via `storage` event.
+ *
+ * @returns {JSX.Element} The rendered schedule table.
+ */
+export default function Schedule(): JSX.Element {
+  // State: selected date
+  const [date, setDate] = useState<string>(() => {
     const d = new Date();
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -93,14 +135,17 @@ export default function Schedule() {
     return `${yyyy}-${mm}-${dd}`;
   });
 
-  const [bookedSlots, setBookedSlots] = useState(new Set());
+  // State: booked slot keys
+  const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set());
 
+  /** Load bookings when the date changes */
   useEffect(() => {
     setBookedSlots(loadBookingsForDate(date));
   }, [date]);
 
+  /** Sync bookings every 10s and on storage updates */
   useEffect(() => {
-    function onStorage(e) {
+    function onStorage(e: StorageEvent) {
       if (e.key === "bookings") {
         setBookedSlots(loadBookingsForDate(date));
       }
@@ -111,6 +156,7 @@ export default function Schedule() {
       const interval = setInterval(() => {
         setBookedSlots(loadBookingsForDate(date));
       }, 10000);
+
       return () => {
         clearInterval(interval);
         window.removeEventListener("storage", onStorage);
@@ -118,6 +164,7 @@ export default function Schedule() {
     }
   }, [date]);
 
+  /** Precompute morning and night time rows */
   const morningRows = useMemo(
     () => timesMorning.map((t) => ({ label: t, rows: courts })),
     []
@@ -127,6 +174,7 @@ export default function Schedule() {
     []
   );
 
+  /** Determine weekend pricing */
   const isWeekend = useMemo(() => {
     const day = new Date(date).getDay();
     return day === 0 || day === 6;
@@ -137,7 +185,7 @@ export default function Schedule() {
 
   return (
     <section className="w-full flex flex-col gap-8 px-6 sm:px-24 py-8 font-main">
-      {/* Title + description */}
+      {/* Title + Description */}
       <div>
         <h1 className="text-4xl font-bold mb-2">
           <Text path="schedule.title" />
@@ -147,7 +195,7 @@ export default function Schedule() {
         </p>
       </div>
 
-      {/* Date selector + schedule table */}
+      {/* Date Picker + Table */}
       <div className="bg-main p-6 rounded-2xl shadow-md border border-gray-300">
         <div className="ml-1 mb-6 flex items-center gap-6">
           <label className="font-semibold">
@@ -178,7 +226,7 @@ export default function Schedule() {
               ))}
             </div>
 
-            {/* Morning section */}
+            {/* Morning Section */}
             <div className="mb-2 mt-7">
               <div className="px-5 py-1 rounded-full bg-white border border-gray-300 w-full text-center font-medium">
                 <Text path="courtInfo.pricing.weekday.time.0" />
@@ -214,7 +262,7 @@ export default function Schedule() {
               ))}
             </div>
 
-            {/* Night section */}
+            {/* Night Section */}
             <div className="mb-2 mt-10">
               <div className="px-3 py-1 rounded-full bg-white border border-gray-300 w-full text-center font-medium">
                 <Text path="courtInfo.pricing.weekday.time.1" />

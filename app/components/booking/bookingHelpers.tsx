@@ -21,7 +21,7 @@
  * @param {string} label - A time range string (e.g., `"08.00 - 09.00"`).
  * @returns {string} The normalized start time (e.g., `"08:00"`).
  */
-export function startTimeFromLabel(label) {
+export function startTimeFromLabel(label: string): string {
   const start = label.split(" - ")[0].trim();
   const hourMin = start.replace(".", ":");
   if (hourMin.startsWith("24:")) return hourMin.replace("24:", "00:");

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * @fileoverview
  * The `BookingCard` component is the main interface for court booking.
@@ -17,8 +19,6 @@
  * It automatically prevents double-booking and removes expired bookings.
  */
 
-"use client";
-
 import { useState, useMemo, useCallback } from "react";
 import { Text } from "../Text";
 import TimeSelector from "./utils/TimeSelector";
@@ -33,25 +33,20 @@ import {
 import { startTimeFromLabel } from "./bookingHelpers";
 import { timesMorning, timesNight, courts } from "./constants";
 
-/**
- * The main booking form component used on the court reservation page.
- *
- * It combines date, time, and court selection with automatic price calculation.
- * Data is synchronized in real-time through `localStorage`, ensuring that
- * booked slots are locked globally (even across browser tabs).
- *
- * @returns {JSX.Element} The complete booking card UI with selection controls and summary.
- */
-export default function BookingCard() {
-  const [date, setDate] = useState("");
-  const [courtCount, setCourtCount] = useState(1);
-  const [selectedTimes, setSelectedTimes] = useState([]);
-  const [selectedCourts, setSelectedCourts] = useState([]);
+type BookingKey = string;
+type TimeLabel = string;
+type CourtId = string | number;
+
+export default function BookingCard(): JSX.Element {
+  const [date, setDate] = useState<string>("");
+  const [courtCount, setCourtCount] = useState<number>(1);
+  const [selectedTimes, setSelectedTimes] = useState<TimeLabel[]>([]);
+  const [selectedCourts, setSelectedCourts] = useState<CourtId[]>([]);
   const { bookedSet, setBookedSet } = useBookings(date);
 
   /** Handles toggling a selected time slot. */
   const toggleTime = useCallback(
-    (time) => {
+    (time: TimeLabel) => {
       setSelectedTimes((prev) =>
         prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time]
       );
@@ -61,9 +56,9 @@ export default function BookingCard() {
 
   /** Checks if a given time/court pair is already booked. */
   const isSlotBooked = useCallback(
-    (timeLabel, courtId) => {
+    (timeLabel: TimeLabel, courtId: CourtId): boolean => {
       const start = startTimeFromLabel(timeLabel);
-      const key = `${start}|${courtId}`;
+      const key: BookingKey = `${start}|${courtId}`;
       return bookedSet.has(key);
     },
     [bookedSet]
@@ -71,7 +66,7 @@ export default function BookingCard() {
 
   /** Toggles court selection, respecting the court count limit and booked status. */
   const toggleCourt = useCallback(
-    (courtId) => {
+    (courtId: CourtId) => {
       setSelectedCourts((prev) => {
         if (prev.includes(courtId)) return prev.filter((c) => c !== courtId);
         if (prev.length >= courtCount) return prev;
@@ -107,7 +102,8 @@ export default function BookingCard() {
     if (selectedTimes.length === 0 || selectedCourts.length === 0)
       return alert("Pilih jam dan lapangan terlebih dahulu.");
 
-    const raw = loadBookingsRaw();
+    const raw: Record<string, { key: string; timestamp: number }[]> =
+      loadBookingsRaw();
     const todays = raw[date] || [];
 
     for (const t of selectedTimes) {
@@ -136,7 +132,7 @@ export default function BookingCard() {
     setSelectedTimes([]);
     setSelectedCourts([]);
     alert("Booking berhasil disimpan!");
-  }, [date, selectedTimes, selectedCourts]);
+  }, [date, selectedTimes, selectedCourts, setBookedSet]);
 
   return (
     <section className="w-full flex flex-col px-6 sm:px-24 py-29 font-main">
