@@ -25,8 +25,14 @@ import { loadBookedSetForDate, cleanupExpiredBookings } from "../bookingStorage"
  * - `bookedSet`: A Set of booked time slots or courts for the given date.
  * - `setBookedSet`: A setter for updating the booked state manually if needed.
  */
-export function useBookings(date) {
-  const [bookedSet, setBookedSet] = useState(new Set());
+
+type UseBookingsResult = {
+  bookedSet: Set<string>;
+  setBookedSet: React.Dispatch<React.SetStateAction<Set<string>>>;
+};
+
+export function useBookings(date: string): UseBookingsResult {
+  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (typeof window !== "undefined" && date) {
@@ -36,7 +42,7 @@ export function useBookings(date) {
   }, [date]);
 
   useEffect(() => {
-    function onStorage(e) {
+    function onStorage(e: StorageEvent) {
       if (e.key === "bookings") {
         cleanupExpiredBookings();
         setBookedSet(loadBookedSetForDate(date));
